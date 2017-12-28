@@ -1,0 +1,15 @@
+---
+# tasks file for log
+
+- name: Validando  Vhost
+  command: test -f /etc/nginx/sites-enabled/green.conf
+  register: vhost
+  ignore_errors: yes
+
+- name: Gerando Log caso seja Green
+  shell: echo 'green' > /tmp/log
+  when: vhost.rc == 0
+
+- name: Gerando log caso seja Blue
+  shell: echo 'Blue' > /tmp/log
+  when: vhost.rc == 1

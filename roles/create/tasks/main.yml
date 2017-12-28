@@ -1,0 +1,38 @@
+---
+
+- name: Verificando ambiente 
+  command: cat /tmp/log
+  register: name
+
+- name: Verificar a existe um controlador
+  command: docker inspect {{ name.stdout }}
+  register: conteiner
+  ignore_errors: yes
+
+- name: Removendo conteiner caso exista
+  command: docker rm -f {{ name.stdout }}
+  when: conteiner.rc == 0
+
+- name: Criando novo container Green novo
+  command: docker run -dit --name {{ name.stdout }} --net=dexterlam --ip 10.0.0.41 --add-host devops.dexter.com.br:192.168.200.100 deploy bash
+  when: name.stdout == "green"
+
+- name: Criando novo container Blue
+  command: docker run -dit --name {{ name.stdout }} --net=dexterlam --ip 10.0.0.42 --add-host devops.dexter.com.br:192.168.200.100 deploy bash
+  when: name.stdout == "blue"
+
+- name: Habilitar o puppet agent no container
+  command: docker exec {{ name.stdout }} /opt/puppetlabs/bin/puppet agent --enable
+
+- name: Rodar o puppet agent no container
+  command: docker exec {{ name.stdout }} /opt/puppetlabs/bin/puppet agent -t
+  ignore_errors: yes
+
+- name: Remover a pagina defaut do apache2
+  command: docker exec {{ name.stdout }} rm -f /etc/apache2/sites.enabled/000-default.conf
+
+- name: Baixar nova versao do codigo do GitLab
+  command: docker exec {{ name.stdout }} git clone git@devops.dexter.com.br:devops/web.git /var/www/web
+
+- name: Restart do Nginx
+  command: systemctl restart nginx
